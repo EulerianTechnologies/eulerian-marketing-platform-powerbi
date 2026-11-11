@@ -18,7 +18,10 @@ let
     FactError = (name as text, fragment as text, expr as function) as record =>
         let
             result = try expr(),
-            message = if result[HasError] then result[Error][Message] & " " & Text.From(result[Error][Detail]?) else "no error"
+            // Error details can be text or a record (e.g. [Code = "QUERY_INVALID"]): records are serialized as JSON.
+            detail = if result[HasError] then result[Error][Detail]? else null,
+            detailText = if detail = null then "" else if detail is text then detail else try Text.FromBinary(Json.FromValue(detail)) otherwise "",
+            message = if result[HasError] then result[Error][Message] & " " & detailText else "no error"
         in
             [Name = name, Passed = result[HasError] and Text.Contains(message, fragment), Expected = "error containing: " & fragment, Actual = message],
 
