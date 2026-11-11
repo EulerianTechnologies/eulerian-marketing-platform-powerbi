@@ -40,8 +40,8 @@ let
         Fact("kinds are rt# only", true, List.AllTrue(List.Transform(Site{[Key = "Kinds"]}[Data][kind], each Text.StartsWith(_, "rt#")))),
         Fact("metrics catalog", true, List.Contains(Site{[Key = "rt#insummary"]}[Data]{[Key = "Metrics"]}[Data][field], "visit")),
         Fact("dimensions of the default level (rt#insummary)", true, List.Contains(Site{[Key = "rt#insummary"]}[Data]{[Key = "Dimensions"]}[Data][field], "media_key_po")),
-        Fact("dimensions of the default level (rt#ope)", true, List.Contains(Site{[Key = "rt#ope"]}[Data]{[Key = "Dimensions"]}[Data][field], "ope_name")),
-        Fact("dimensions of an explicit level", true, List.Contains(Site{[Key = "rt#ope"]}[Data]{[Key = "DimensionsOfLevel"]}[Data]("mcWEBSITE[?].mcGLOBALOPE.mcOPE")[field], "ope_name")),
+        Fact("dimensions of the default level (rt#website)", true, List.Contains(Site{[Key = "rt#website"]}[Data]{[Key = "Dimensions"]}[Data][field], "website_name")),
+        Fact("dimensions of an explicit level", true, List.Contains(Site{[Key = "rt#website"]}[Data]{[Key = "DimensionsOfLevel"]}[Data]("mcWEBSITE[?].mcGLOBALOPE.mcOPE")[field], "ope_name")),
 
         Fact("channels: rows as returned (global included)", 10, Table.RowCount(channels)),
         Fact("channels: global row present", true, List.Contains(channels[media_key_po], "global")),
