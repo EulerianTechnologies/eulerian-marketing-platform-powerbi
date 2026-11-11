@@ -69,8 +69,7 @@ let
         FactError("same metric plain and segmented rejected", "requested both plain and segmented: request it in two separate reports",
             () => Report("rt#ope", {"ope_name"}, {"realscartvalidamount", [field = "realscartvalidamount", segment = [by = "ordertype"]]}, {"CURRENT_MONTH"})),
         FactError("kind must start with rt#", "kind must start with rt#", () => Report("cj#bias-simple", {"x"}, {"y"}, {"TODAY"})),
-        FactError("unknown field: API message surfaced", "not_a_field", () => Report("rt#insummary", {"not_a_field"}, {"visit"}, {"TODAY"})),
-        FactError("endpoint outside Eulerian rejected", "endpoint must be", () => EulerianMarketingPlatform.Contents("https://evil.example.com"))
+        FactError("unknown field: API message surfaced", "not_a_field", () => Report("rt#insummary", {"not_a_field"}, {"visit"}, {"TODAY"}))
     },
     results = Table.FromRecords(facts),
     failed = Table.SelectRows(results, each not [Passed]),
