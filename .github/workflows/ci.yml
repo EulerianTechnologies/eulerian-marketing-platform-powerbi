@@ -43,27 +43,26 @@ jobs:
           if (-not $pqtest) { throw "PQTest.exe not found in Microsoft.PowerQuery.SdkTools" }
           "PQTEST=$($pqtest.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append
 
-      - name: Start mock API
+      - name: Run PQTest facts against the mock API
         shell: pwsh
         run: |
-          Start-Process -FilePath node -ArgumentList "mock-server/server.mjs" -NoNewWindow
-          for ($i = 0; $i -lt 30; $i++) {
-            try { Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8787/__mock/requests | Out-Null; break } catch { Start-Sleep -Seconds 1 }
+          # The mock runs in this same step so that it is still alive while PQTest evaluates the query.
+          $mock = Start-Process -FilePath node -ArgumentList "mock-server/server.mjs" -NoNewWindow -PassThru
+          $up = $false
+          for ($i = 0; $i -lt 30 -and -not $up; $i++) {
+            try { Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8787/__mock/requests | Out-Null; $up = $true } catch { Start-Sleep -Seconds 1 }
           }
+          if (-not $up) { throw "mock API did not start on http://127.0.0.1:8787" }
 
-      - name: Set mock credential
-        shell: pwsh
-        run: |
           $ext = "dist\EulerianMarketingPlatform.mez"
           $query = "test\pqtest\EulerianMarketingPlatform.query.pq"
           $template = & $env:PQTEST credential-template -e $ext -q $query -p -ak Key | Out-String | ConvertFrom-Json
           $template.AuthenticationProperties.Key = "mock-token"
           $template | ConvertTo-Json -Depth 10 | & $env:PQTEST set-credential -e $ext -q $query -p
 
-      - name: Run PQTest facts
-        shell: pwsh
-        run: |
-          $out = & $env:PQTEST run-test -e dist\EulerianMarketingPlatform.mez -q test\pqtest\EulerianMarketingPlatform.query.pq -p | Out-String
+          $out = & $env:PQTEST run-test -e $ext -q $query -p | Out-String
           Write-Host $out
-          # The query raises Tests.Failed when a fact fails; PQTest then reports an error.
-          if ($LASTEXITCODE -ne 0 -or $out -match "Tests.Failed" -or $out -match '"Status":\s*"Failure"') { exit 1 }
+          Stop-Process -Id $mock.Id -ErrorAction SilentlyContinue
+          # PQTest reports "Status": "Failed" (with the Tests.Failed error raised by the query) when a fact fails.
+          if ($LASTEXITCODE -ne 0 -or $out -match "Tests.Failed" -or $out -match '"Status":\s*"(Failed|Failure|Error)"') { exit 1 }
+          if ($out -notmatch '"Status":\s*"Passed"') { throw "PQTest did not report a passed run" }
