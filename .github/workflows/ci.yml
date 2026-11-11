@@ -63,6 +63,6 @@ jobs:
           $out = & $env:PQTEST run-test -e $ext -q $query -p | Out-String
           Write-Host $out
           Stop-Process -Id $mock.Id -ErrorAction SilentlyContinue
-          # PQTest reports "Status": "Failed" (with the Tests.Failed error raised by the query) when a fact fails.
-          if ($LASTEXITCODE -ne 0 -or $out -match "Tests.Failed" -or $out -match '"Status":\s*"(Failed|Failure|Error)"') { exit 1 }
+          # The output echoes the query source, so check the result fields rather than searching for error names.
+          if ($LASTEXITCODE -ne 0 -or $out -match '"Status":\s*"(Failed|Failure|Error)"' -or $out -match '"Passed":\s*false') { exit 1 }
           if ($out -notmatch '"Status":\s*"Passed"') { throw "PQTest did not report a passed run" }
