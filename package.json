@@ -1,0 +1,27 @@
+{
+  "name": "eulerian-marketing-platform-powerbi",
+  "version": "1.0.0",
+  "description": "Power BI / Power Query custom connector for the Eulerian Marketing Platform Batch Reporting API",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "author": "Eulerian Technologies",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/EulerianTechnologies/eulerian-marketing-platform-powerbi.git"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "build": "node scripts/build-mez.mjs",
+    "icons": "node scripts/make-icons.mjs",
+    "mock": "node mock-server/server.mjs",
+    "ci": "npm test && npm run build"
+  },
+  "devDependencies": {
+    "@microsoft/powerquery-parser": "4.0.0",
+    "vitest": "^3.2.4"
+  }
+}

@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  static:
+    # Syntax (Microsoft powerquery-parser) + static checks + .mez packaging.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run ci
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EulerianMarketingPlatform.mez
+          path: dist/EulerianMarketingPlatform.mez
+
+  pqtest:
+    # Evaluates the connector with the Power Query SDK test runner against the mock API.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
+      - name: Install Power Query SDK tools (PQTest)
+        shell: pwsh
+        run: |
+          nuget install Microsoft.PowerQuery.SdkTools -OutputDirectory .tools -ExcludeVersion -NonInteractive
+          $pqtest = Get-ChildItem -Recurse .tools -Filter PQTest.exe | Select-Object -First 1
+          if (-not $pqtest) { throw "PQTest.exe not found in Microsoft.PowerQuery.SdkTools" }
+          "PQTEST=$($pqtest.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Start mock API
+        shell: pwsh
+        run: |
+          Start-Process -FilePath node -ArgumentList "mock-server/server.mjs" -NoNewWindow
+          for ($i = 0; $i -lt 30; $i++) {
+            try { Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8787/__mock/requests | Out-Null; break } catch { Start-Sleep -Seconds 1 }
+          }
+
+      - name: Set mock credential
+        shell: pwsh
+        run: |
+          $ext = "dist\EulerianMarketingPlatform.mez"
+          $query = "test\pqtest\EulerianMarketingPlatform.query.pq"
+          $template = & $env:PQTEST credential-template -e $ext -q $query -p -ak Key | Out-String | ConvertFrom-Json
+          $template.AuthenticationProperties.Key = "mock-token"
+          $template | ConvertTo-Json -Depth 10 | & $env:PQTEST set-credential -e $ext -q $query -p
+
+      - name: Run PQTest facts
+        shell: pwsh
+        run: |
+          $out = & $env:PQTEST run-test -e dist\EulerianMarketingPlatform.mez -q test\pqtest\EulerianMarketingPlatform.query.pq -p | Out-String
+          Write-Host $out
+          # The query raises Tests.Failed when a fact fails; PQTest then reports an error.
+          if ($LASTEXITCODE -ne 0 -or $out -match "Tests.Failed" -or $out -match '"Status":\s*"Failure"') { exit 1 }
